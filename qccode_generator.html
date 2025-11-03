@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎨 趣味互动二维码生成器 - 实时预览</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+    <style>
+        /* 全局美化 */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #f0f8ff, #e6e6fa); /* 浅色渐变背景 */
+            color: #333;
+        }
+
+        .main-card {
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 650px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        h1 {
+            color: #4a90e2;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+
+        /* 输入区 */
+        .input-group {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background: #fafafa;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        textarea {
+            width: 100%;
+            height: 80px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            border-color: #4a90e2;
+            outline: none;
+        }
+
+        /* 选项区 */
+        .options-group {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        /* 颜色选择器美化 */
+        #colorPicker {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 40px;
+            height: 40px;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: transform 0.2s;
+        }
+        #colorPicker::-webkit-color-swatch {
+            border: none;
+            border-radius: 5px;
+        }
+        #colorPicker::-moz-color-swatch {
+            border: none;
+            border-radius: 5px;
+        }
+        #colorPicker:hover {
+            transform: scale(1.05);
+        }
+
+        /* 结果区 */
+        .result-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        #qrcode {
+            padding: 10px;
+            border: 5px solid #fff; /* 突出二维码 */
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 15px;
+            /* 动画：当二维码出现时，给一个轻微的缩放效果 */
+            transform: scale(1);
+            transition: transform 0.5s ease-out;
+        }
+
+        /* 按钮美化 */
+        .action-button {
+            background-color: #5cb85c;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        .action-button:hover {
+            background-color: #4cae4c;
+        }
+
+        .action-button:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-card">
+        <h1>✨ 魔法二维码创作站 ✨</h1>
+        
+        <div class="input-group">
+            <label for="textInput">输入内容 (实时生成)</label>
+            <textarea id="textInput" placeholder="请输入任意网址、文本、或是秘密暗号..."></textarea>
+        </div>
+
+        <div class="options-group">
+            <label for="colorPicker">选择颜色：</label>
+            <input type="color" id="colorPicker" value="#4a90e2" oninput="generateQRCode()">
+            <span style="color:#888;">(实时预览效果)</span>
+        </div>
+        
+        <div class="result-area">
+            <div id="qrcode">
+                <p style="color:#888; margin-top:50px;">输入内容即可开始创作！</p>
+            </div>
+            <button id="downloadBtn" class="action-button" onclick="downloadQRCode()" style="display:none;">📥 下载您的二维码</button>
+        </div>
+    </div>
+
+    <script>
+        // 定义全局变量和常量
+        const qrcodeContainer = document.getElementById('qrcode');
+        const textInput = document.getElementById('textInput');
+        const colorPicker = document.getElementById('colorPicker');
+        const downloadBtn = document.getElementById('downloadBtn');
+        let qr = null; // 用于存储 qrcode 实例
+
+        /**
+         * 核心函数：生成/更新二维码
+         */
+        function generateQRCode() {
+            const text = textInput.value.trim();
+            const color = colorPicker.value;
+
+            // 1. 检查输入是否为空
+            if (!text) {
+                qrcodeContainer.innerHTML = '<p style="color:#888; margin-top:50px;">输入内容即可开始创作！</p>';
+                downloadBtn.style.display = 'none'; // 隐藏下载按钮
+                return;
+            }
+
+            // 2. 清除旧的二维码
+            qrcodeContainer.innerHTML = '';
+            
+            // 3. 创建新的 QRCode 实例
+            qr = new QRCode(qrcodeContainer, {
+                text: text, 
+                width: 200, // 稍微加大尺寸
+                height: 200,
+                colorDark : color, // 使用用户选择的颜色
+                colorLight : "#ffffff", 
+                correctLevel : QRCode.CorrectLevel.H 
+            });
+
+            // 4. 显示下载按钮
+            downloadBtn.style.display = 'block';
+        }
+
+        /**
+         * 实用函数：下载二维码图片
+         */
+        function downloadQRCode() {
+            // qrcode.js 生成的是 Canvas 或 Table，我们需要找到 Canvas
+            const canvas = qrcodeContainer.querySelector('canvas');
+            
+            if (!canvas) {
+                alert("二维码尚未生成或生成失败！");
+                return;
+            }
+
+            // 将 Canvas 转换为 DataURL (PNG格式)
+            const dataURL = canvas.toDataURL("image/png");
+
+            // 创建一个临时的链接元素
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = `my_qrcode_${Date.now()}.png`; // 设置文件名
+            
+            // 模拟点击下载
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link); // 清理临时元素
+        }
+
+        // 绑定事件：实现实时生成 (关键的互动增强)
+        textInput.addEventListener('input', generateQRCode);
+
+        // 初始生成（如果输入框有默认值）
+        window.onload = generateQRCode;
+    </script>
+
+</body>
+</html>
